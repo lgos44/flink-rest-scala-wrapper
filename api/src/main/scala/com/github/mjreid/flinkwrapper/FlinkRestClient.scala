@@ -70,6 +70,9 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
     wsClient.url(url + "joboverview").get().map(responseHandler.handleResponse[JobOverview])
   }
 
+  def getJarsList()(implicit ec: ExecutionContext): Future[JarsList] = {
+    wsClient.url(url + "jars").get().map(responseHandler.handleResponse[JarsList])
+  }
   /**
     * runProgram starts a job on the Flink server.
     *

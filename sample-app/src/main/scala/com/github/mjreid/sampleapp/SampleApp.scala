@@ -44,6 +44,13 @@ object SampleApp extends App {
     Await.result(result, FiniteDuration(1, TimeUnit.SECONDS))
   }
 
+  def runGetJarsList(): JarsList = {
+    val resultF = flinkClient.getJarsList()
+    val result = Await.result(resultF, FiniteDuration(1, TimeUnit.SECONDS))
+    println(result)
+    result
+  }
+
   def runStartProgram(jarName: String, mainClass: Option[String]): RunProgramResult = {
     val result = flinkClient.runProgram(
       jarName,//"c5556a8b-ea02-4c69-b7a0-59011cd7e4bd_bs.jar",
@@ -111,6 +118,7 @@ object SampleApp extends App {
 
   runGetConfig()
   runGetJobsList()
+  runGetJarsList()
   runGetJobOverview()
   runGetJobOverview()
   val jarName = runUploadJar()
