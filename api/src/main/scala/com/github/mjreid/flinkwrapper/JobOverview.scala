@@ -49,26 +49,31 @@ object JobSummary {
 
 case class TaskCounts(
   total: Int,
-  pending: Int,
+  created: Int,
+  scheduled: Int,
+  deploying: Int,
   running: Int,
   finished: Int,
   canceling: Int,
   canceled: Int,
-  failed: Int
+  failed: Int,
+  reconciling: Int
 )
 
 object TaskCounts {
   implicit val reads: Reads[TaskCounts] = (
     (JsPath \ "total").read[Int] and
-      (JsPath \ "pending").read[Int] and // "pending" is equal to created + scheduled + deploying, internally
+      (JsPath \ "created").read[Int] and
+      (JsPath \ "scheduled").read[Int] and
+      (JsPath \ "deploying").read[Int] and
       (JsPath \ "running").read[Int] and
       (JsPath \ "finished").read[Int] and
       (JsPath \ "canceling").read[Int] and
       (JsPath \ "canceled").read[Int] and
-      (JsPath \ "failed").read[Int]
-  )(TaskCounts.apply _)
+      (JsPath \ "failed").read[Int] and
+      (JsPath \ "reconciling").read[Int]
+    ) (TaskCounts.apply _)
 }
-
 
 object ExecutionStatus {
   /**
