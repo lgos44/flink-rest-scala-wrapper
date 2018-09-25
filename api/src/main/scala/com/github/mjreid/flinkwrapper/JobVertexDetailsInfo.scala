@@ -8,7 +8,7 @@ import play.api.libs.functional.syntax._
 
 import scala.concurrent.duration.Duration
 
-case class JobVertex(
+case class JobVertexDetailsInfo(
   id: String,
   name: String,
   parallelism: Int,
@@ -20,8 +20,8 @@ case class JobVertex(
   metrics: VertexMetrics
 )
 
-object JobVertex {
-  implicit val reads: Reads[JobVertex] = (
+object JobVertexDetailsInfo {
+  implicit val reads: Reads[JobVertexDetailsInfo] = (
     (JsPath \ "id").read[String] and
       (JsPath \ "name").read[String] and
       (JsPath \ "parallelism").read[Int] and
@@ -31,5 +31,5 @@ object JobVertex {
       (JsPath \ "duration").read[Option[Duration]](Readers.millisOptionalDurationReader) and
       (JsPath \ "tasks").read[VertexTaskCounts] and
       (JsPath \ "metrics").read[VertexMetrics]
-    )(JobVertex.apply _)
+    )(JobVertexDetailsInfo.apply _)
 }

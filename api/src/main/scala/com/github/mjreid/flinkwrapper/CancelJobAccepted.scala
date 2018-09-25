@@ -8,26 +8,27 @@ case class CancelJobAccepted(
   location: String
 )
 
-case class CancellationStatusInfo(
-  status: CancellationStatus.CancellationStatus,
-  requestId: Long,
-  savepointPath: Option[String],
-  failureCause: Option[String]
+case class AsynchronousOperationResult(
+                                        status: QueueStatus,
+                                        operation: Option[Operation]
 )
 
-object CancellationStatus {
 
-  sealed trait CancellationStatus
-  case object InProgress extends CancellationStatus
-  case object Success extends CancellationStatus
-  case object Failed extends CancellationStatus
+object StatusTypes {
 
-  implicit val reads: Reads[CancellationStatus] = Reads {
+  sealed trait StatusType
+  case object InProgress extends StatusType
+  case object Success extends StatusType
+  case object Failed extends StatusType
+  case object Completed extends StatusType
+
+  implicit val reads: Reads[StatusType] = Reads {
     case JsString(statusString) =>
       statusString.toUpperCase match {
-        case "IN-PROGRESS" => JsSuccess(InProgress)
+        case "IN_PROGRESS" => JsSuccess(InProgress)
         case "SUCCESS" => JsSuccess(Success)
         case "FAILED" => JsSuccess(Failed)
+        case "COMPLETED" => JsSuccess(Completed)
         case _ => JsError("Not a valid cancellation status")
       }
     case _ => JsError("Not a valid cancellation status")
@@ -41,11 +42,22 @@ object CancelJobAccepted {
   )(CancelJobAccepted.apply _)
 }
 
-object CancellationStatusInfo {
- implicit val reads: Reads[CancellationStatusInfo] = (
-   (JsPath \ "status").read[CancellationStatus.CancellationStatus] and
-     (JsPath \ "request-id").read[Long] and
-     (JsPath \ "savepoint-path").readNullable[String] and
-     (JsPath \ "cause").readNullable[String]
- )(CancellationStatusInfo.apply _)
+object AsynchronousOperationResult {
+ implicit val reads: Reads[AsynchronousOperationResult] = (
+   (JsPath \ "status").read[QueueStatus] and
+     (JsPath \ "operation").readNullable[Operation]
+ )(AsynchronousOperationResult.apply _)
+}
+
+
+case class QueueStatus(id: StatusTypes.StatusType)
+
+object QueueStatus {
+  implicit val reads: Reads[QueueStatus] = (JsPath \ "id").read[StatusTypes.StatusType].map(QueueStatus(_))
+}
+
+case class Operation(location: Option[String])
+
+object Operation {
+  implicit val reads: Reads[Operation] = (JsPath \ "location").readNullable[String].map(Operation(_))
 }

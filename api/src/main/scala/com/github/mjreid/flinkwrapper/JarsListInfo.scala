@@ -6,14 +6,14 @@ import play.api.libs.json._
 /**
   * JobsList is the result of a call to GET /jobs. It contains IDs of the jobs grouped by their statuses.
   */
-case class JarsList(
+case class JarsListInfo(
                      address: String,
-                     files: Seq[Jar]
+                     files: Seq[JarFileInfo]
                    )
 
-object JarsList {
-  implicit val reads: Reads[JarsList] = (
+object JarsListInfo {
+  implicit val reads: Reads[JarsListInfo] = (
     (JsPath \ "address").read[String] and
-      (JsPath \ "files").read[Seq[Jar]]
-    )(JarsList.apply _)
+      (JsPath \ "files").read[Seq[JarFileInfo]]
+    )(JarsListInfo.apply _)
 }

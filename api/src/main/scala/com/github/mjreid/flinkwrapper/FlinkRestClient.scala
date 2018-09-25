@@ -32,8 +32,8 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
   /**
     * getConfig returns the system level configuration level of the Flink server.
     */
-  def getConfig()(implicit ec: ExecutionContext): Future[FlinkConfigInfo] = {
-    wsClient.url(url + "config").get().map(responseHandler.handleResponse[FlinkConfigInfo])
+  def getConfig()(implicit ec: ExecutionContext): Future[DashboardConfiguration] = {
+    wsClient.url(url + "config").get().map(responseHandler.handleResponse[DashboardConfiguration])
   }
 
   /**
@@ -59,19 +59,19 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
   /**
     * getJobsList gets a list of all jobs, separated by the state of each job.
     */
-  def getJobsList()(implicit ec: ExecutionContext): Future[JobsList] = {
-    wsClient.url(url + "jobs").get().map(responseHandler.handleResponse[JobsList])
+  def getJobsList()(implicit ec: ExecutionContext): Future[JobIdsWithStatusOverview] = {
+    wsClient.url(url + "jobs").get().map(responseHandler.handleResponse[JobIdsWithStatusOverview])
   }
 
   /**
     * getJobOverview provides a list of all running and finished jobs with a medium level of detail.
     */
-  def getJobOverview()(implicit ec: ExecutionContext): Future[JobOverview] = {
-    wsClient.url(url + "joboverview").get().map(responseHandler.handleResponse[JobOverview])
+  def getJobOverview()(implicit ec: ExecutionContext): Future[MultipleJobsDetails] = {
+    wsClient.url(url + "jobs/overview").get().map(responseHandler.handleResponse[MultipleJobsDetails])
   }
 
-  def getJarsList()(implicit ec: ExecutionContext): Future[JarsList] = {
-    wsClient.url(url + "jars").get().map(responseHandler.handleResponse[JarsList])
+  def getJarsList()(implicit ec: ExecutionContext): Future[JarsListInfo] = {
+    wsClient.url(url + "jars").get().map(responseHandler.handleResponse[JarsListInfo])
   }
   /**
     * runProgram starts a job on the Flink server.
@@ -83,22 +83,15 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
   def runProgram(
     jarId: String,
     programArguments: Option[Seq[String]] = None,
-    mainClass: Option[String] = None,
+    entryClass: Option[String] = None,
     parallelism: Option[Int] = None,
     savepointPath: Option[String] = None,
     allowNonRestoredState: Option[Boolean] = None
-  )(implicit ec: ExecutionContext): Future[RunProgramResult] = {
-    // Yes, these need to be query parameters rather than form values, despite this being a POST.
-    val queryParameters: Seq[(String, String)] = Seq[Option[(String, String)]](
-      programArguments.map { args => ("program-args", args.mkString(" ")) },
-      mainClass.map { mc => ("entry-class", mc) },
-      parallelism.map { p => ("parallelism", p.toString) },
-      savepointPath.map { path => ("savepointPath", path) },
-      allowNonRestoredState.map { allow => ("allowNonRestoredState", allow.toString.toLowerCase)}
-    ).flatten
-
-    wsClient.url(url + s"jars/$jarId/run").addQueryStringParameter(queryParameters:_*)
-      .post("").map(responseHandler.handleResponse[RunProgramResult])
+  )(implicit ec: ExecutionContext): Future[JarRunResponseBody] = {
+    val body = JarRunRequestBody(entryClass, programArguments.map(_.mkString(" ")), parallelism, allowNonRestoredState, savepointPath)
+    wsClient.url(url + s"jars/$jarId/run")
+      .post(Json.toJson(body))
+      .map(responseHandler.handleResponse[JarRunResponseBody])
   }
 
   /**
@@ -153,8 +146,8 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
     */
   def getJobDetails(
     jobId: String
-  )(implicit ec: ExecutionContext): Future[Option[Job]] = {
-    wsClient.url(url + s"jobs/$jobId").get().map(responseHandler.handleResponseWith404[Job])
+  )(implicit ec: ExecutionContext): Future[Option[JobDetailsInfo]] = {
+    wsClient.url(url + s"jobs/$jobId").get().map(responseHandler.handleResponseWith404[JobDetailsInfo])
   }
 
   /**
@@ -174,7 +167,7 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
     * Note that even if the job ID does not exist or is not in a cancellable state, this still returns a success.
     */
   def cancelJob(jobId: String)(implicit ec: ExecutionContext): Future[Unit] = {
-    wsClient.url(url + s"jobs/$jobId/cancel").delete().map(responseHandler.handleResponse[JsValue]).map { _ => () }
+    wsClient.url(url + s"jobs/$jobId").patch("").map(responseHandler.handleResponse[JsValue]).map { _ => () }
   }
 
   /**
@@ -204,9 +197,39 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
     */
   def getCancellationStatus(
     location: String
-  )(implicit ec: ExecutionContext): Future[CancellationStatusInfo] = {
-    wsClient.url(url + location).get().map(responseHandler.handleResponseIgnoreStatusCodes[CancellationStatusInfo])
+  )(implicit ec: ExecutionContext): Future[AsynchronousOperationResult] = {
+    wsClient.url(url + location).get().map(responseHandler.handleResponseIgnoreStatusCodes[AsynchronousOperationResult])
   }
+
+  /**
+    * cancelJob cancels an in progress job with a savepoint.
+    *
+    * If a target directory is supplied, it is used; otherwise, Flink defaults to the directory configured on the server.
+    *
+    * This method is asynchronous, on the Flink side; saving the state may take an extended period of time.
+    * The [[CancelJobAccepted.location]] can be fed into [[getCancellationStatus()]] to query the status of the
+    * cancellation.
+    */
+  def triggerSavepoint(jobId: String,
+                       targetDirectory: Option[String] = None,
+                       cancelJob: Boolean
+                       )(implicit ec: ExecutionContext): Future[TriggerResponse] = {
+    val fullUrl = url + s"jobs/$jobId/savepoints"
+    wsClient.url(fullUrl)
+      .addHttpHeaders("Content-Type" -> "application/json")
+      .post(Json.toJson(SavepointTriggerRequestBody(targetDirectory, cancelJob))).map(responseHandler.handleResponse[TriggerResponse])
+  }
+
+  /**
+    * getCancellationStatus returns the status of a cancellation that is in progress (i.e. as the result of
+    * [[cancelJobWithSavepoint()]].
+    */
+  def getSavepointStatus( triggerId: String,
+                          jobId: String
+                         )(implicit ec: ExecutionContext): Future[AsynchronousOperationResult] = {
+      wsClient.url(url + s"jobs/$jobId/savepoints/$triggerId").get().map(responseHandler.handleResponseIgnoreStatusCodes[AsynchronousOperationResult])
+  }
+
 
   /**
     * getJobExceptions returns all exceptions associated with the job.

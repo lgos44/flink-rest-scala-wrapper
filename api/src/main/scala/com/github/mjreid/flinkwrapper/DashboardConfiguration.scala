@@ -6,7 +6,7 @@ import play.api.libs.functional.syntax._
 
 import scala.concurrent.duration.Duration
 
-case class FlinkConfigInfo(
+case class DashboardConfiguration(
   refreshInterval: Int,
   timezoneOffset: Duration,
   timezoneName: String,
@@ -14,13 +14,13 @@ case class FlinkConfigInfo(
   flinkRevision: String
 )
 
-object FlinkConfigInfo {
-  implicit val reads: Reads[FlinkConfigInfo] = (
+object DashboardConfiguration {
+  implicit val reads: Reads[DashboardConfiguration] = (
     (JsPath \ "refresh-interval").read[Int] and
       (JsPath \ "timezone-offset").read[Duration](Readers.millisDurationReader) and
       (JsPath \ "timezone-name").read[String] and
       (JsPath \ "flink-version").read[String] and
       (JsPath \ "flink-revision").read[String]
-    )(FlinkConfigInfo.apply _)
+    )(DashboardConfiguration.apply _)
 }
 

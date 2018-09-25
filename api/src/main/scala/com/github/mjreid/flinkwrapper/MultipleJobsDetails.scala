@@ -11,20 +11,17 @@ import scala.concurrent.duration.Duration
 /**
   * JobOverview contains a summary of all jobs, grouped by status.
   */
-case class JobOverview(
-  running: Seq[JobSummary],
-  finished: Seq[JobSummary]
+case class MultipleJobsDetails(
+  running: Seq[JobSummary]
 )
 
-object JobOverview {
-  implicit val reads: Reads[JobOverview] = (
-    (JsPath \ "running").read[Seq[JobSummary]] and
-      (JsPath \ "finished").read[Seq[JobSummary]]
-  )(JobOverview.apply _)
+object MultipleJobsDetails {
+  implicit val reads: Reads[MultipleJobsDetails] =
+    (JsPath \ "jobs").read[Seq[JobSummary]].map(MultipleJobsDetails.apply)
 }
 
 case class JobSummary(
-  id: String,
+  jid: String,
   name: String,
   state: JobStatus.JobStatus,
   startTime: LocalDateTime,
@@ -123,13 +120,17 @@ object JobStatus {
 
   case object Finished extends JobStatus
 
+  case object Failing extends JobStatus
+
   case object Canceled extends JobStatus
 
   case object Failed extends JobStatus
 
-  case object Canceling extends JobStatus
+  case object Cancelling extends JobStatus
 
   case object Suspended extends JobStatus
+
+  case object Suspending extends JobStatus
 
   case object Restarting extends JobStatus
 
@@ -140,12 +141,14 @@ object JobStatus {
       statusString.toUpperCase match {
         case "CREATED" => JsSuccess(JobStatus.Created)
         case "RUNNING" => JsSuccess(JobStatus.Running)
-        case "FINISHED" => JsSuccess(JobStatus.Finished)
-        case "CANCELED" => JsSuccess(JobStatus.Canceled)
+        case "FAILING" => JsSuccess(JobStatus.Failing)
         case "FAILED" => JsSuccess(JobStatus.Failed)
-        case "CANCELING" => JsSuccess(JobStatus.Canceling)
-        case "SUSPENDED" => JsSuccess(JobStatus.Suspended)
+        case "CANCELLING" => JsSuccess(JobStatus.Cancelling)
+        case "CANCELED" => JsSuccess(JobStatus.Canceled)
+        case "FINISHED" => JsSuccess(JobStatus.Finished)
         case "RESTARTING" => JsSuccess(JobStatus.Restarting)
+        case "SUSPENDING" => JsSuccess(JobStatus.Suspending)
+        case "SUSPENDED" => JsSuccess(JobStatus.Suspended)
         case "RECONCILING" => JsSuccess(JobStatus.Reconciling)
         case _ => JsError("Not a valid job status")
       }

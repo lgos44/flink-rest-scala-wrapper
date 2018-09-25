@@ -40,38 +40,35 @@ object SampleApp extends App {
     val result = flinkClient.getJobOverview().map { jobOverview =>
       println(jobOverview)
     }
-
-    Await.result(result, FiniteDuration(1, TimeUnit.SECONDS))
+    Await.result(result, FiniteDuration(10, TimeUnit.SECONDS))
   }
 
-  def runGetJarsList(): JarsList = {
+  def runGetJarsList(): JarsListInfo = {
     val resultF = flinkClient.getJarsList()
     val result = Await.result(resultF, FiniteDuration(1, TimeUnit.SECONDS))
     println(result)
     result
   }
 
-  def runStartProgram(jarName: String, mainClass: Option[String]): RunProgramResult = {
+  def runStartProgram(jarName: String, mainClass: Option[String], programArguments: Option[Seq[String]] = None): JarRunResponseBody = {
     val result = flinkClient.runProgram(
-      jarName,//"c5556a8b-ea02-4c69-b7a0-59011cd7e4bd_bs.jar",
-      mainClass = mainClass.orElse(Some("org.example.WordCount"))
+      jarName,
+      entryClass = mainClass.orElse(Some("org.example.WordCount")),
+      programArguments = programArguments
     )
 
-    val jobResult = Await.result(result, FiniteDuration(1, TimeUnit.SECONDS))
+    val jobResult = Await.result(result, FiniteDuration(60, TimeUnit.SECONDS))
     println(jobResult)
     jobResult
   }
 
   def runUploadJar(): String = {
-    val flinkUrl = "http://localhost:8081"
-    val flinkClient = FlinkRestClient(flinkUrl)
     val resultF = flinkClient.uploadJar(
-      new File("/tmp/bs2.jar")
+      new File("/a.jar")
     )
-
-    val result = Await.result(resultF, FiniteDuration(4, TimeUnit.SECONDS))
+    val result = Await.result(resultF, FiniteDuration(300, TimeUnit.SECONDS))
     println(result)
-    result.filename
+    new File(result.filename).getName
   }
 
   def runGetJobDetails(jobId: String): Unit = {
@@ -95,15 +92,15 @@ object SampleApp extends App {
     println(result)
   }
 
-  def runCancelJobWithSavepoint(jobId: String, savepointPath: String): CancelJobAccepted = {
-    val resultF = flinkClient.cancelJobWithSavepoint(jobId, Some(savepointPath))
+  def runTriggerSavepoint(jobId: String, savepointPath: String): TriggerResponse = {
+    val resultF = flinkClient.triggerSavepoint(jobId, Some(savepointPath), true)
     val result = Await.result(resultF, FiniteDuration(1, TimeUnit.SECONDS))
     println(result)
     result
   }
 
-  def runGetCancellationStatus(location: String): CancellationStatusInfo = {
-    val resultF = flinkClient.getCancellationStatus(location)
+  def runGetSavepointStatus(triggerId: String, jobId:String): AsynchronousOperationResult = {
+    val resultF = flinkClient.getSavepointStatus(triggerId, jobId)
     val result = Await.result(resultF, FiniteDuration(1, TimeUnit.SECONDS))
     println(result)
     result
@@ -128,7 +125,7 @@ object SampleApp extends App {
 
   {
     // Streaming and cancellation testing
-    val kafkaProgramResult = runStartProgram(jarName, Some("org.example.KafkaEcho"))
+    val kafkaProgramResult = runStartProgram(jarName, Some("org.example.WordCount"))
     Thread.sleep(1000)
     runGetJobDetails(kafkaProgramResult.jobId)
     runCancelJob(kafkaProgramResult.jobId)
@@ -137,16 +134,16 @@ object SampleApp extends App {
 
   {
     // Streaming and cancellation with savepoint testing
-    val kafkaProgramResult = runStartProgram(jarName, Some("org.example.KafkaEcho"))
+    val kafkaProgramResult = runStartProgram(jarName, Some("org.example.WordCount"))
     Thread.sleep(1000)
     runGetJobDetails(kafkaProgramResult.jobId)
-    val cancelJobAccepted = runCancelJobWithSavepoint(kafkaProgramResult.jobId, "/tmp")
+    val cancelJobAccepted = runTriggerSavepoint(kafkaProgramResult.jobId, "tmp")
     runGetJobDetails(kafkaProgramResult.jobId)
-    var status = runGetCancellationStatus(cancelJobAccepted.location)
+    var status = runGetSavepointStatus(cancelJobAccepted.requestId, kafkaProgramResult.jobId)
     println(status)
-    while (status.status != CancellationStatus.Failed && status.status != CancellationStatus.Success) {
+    while (status.status.id != StatusTypes.Failed && status.status.id != StatusTypes.Completed) {
       Thread.sleep(10000)
-      status = runGetCancellationStatus(cancelJobAccepted.location)
+      status = runGetSavepointStatus(cancelJobAccepted.requestId, kafkaProgramResult.jobId)
       println(status)
     }
 
