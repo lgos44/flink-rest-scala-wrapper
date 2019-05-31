@@ -53,9 +53,3 @@ lazy val sampleApp = project.in(file("sample-app"))
 
 useGpg := true
 
-publishTo := Some(
-  if (isSnapshot.value)
-    Opts.resolver.sonatypeSnapshots
-  else
-    Opts.resolver.sonatypeStaging
-)
