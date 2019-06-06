@@ -12,7 +12,7 @@ import scala.concurrent.duration.Duration
   * JobOverview contains a summary of all jobs, grouped by status.
   */
 case class MultipleJobsDetails(
-  running: Seq[JobSummary]
+  jobs: Seq[JobSummary]
 )
 
 object MultipleJobsDetails {

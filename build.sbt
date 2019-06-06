@@ -1,4 +1,5 @@
-import sbt.url
+import sbt.Keys.credentials
+import sbt.{Credentials, url}
 
 name := "flink-rest-scala-wrapper"
 
@@ -11,7 +12,8 @@ lazy val commonSettings = Seq(
 lazy val root = project.in(file("."))
   .settings(commonSettings)
   .settings(publish := { })
-  .settings(publishArtifact := false)
+  .settings(skip in publish := true)
+//  .settings(publishArtifact := false)
   .aggregate(api, sampleApp)
 
 
@@ -19,10 +21,10 @@ lazy val api = project.in(file("api"))
   .settings(commonSettings)
   .settings(name := "flink-wrapper")
   .settings(libraryDependencies ++= Dependencies.all)
+  .settings(publishTo := Some("bintray-lgos-mvn" at "https://api.bintray.com/maven/lgos/mvn/flink-rest-scala-wrapper/;publish=1"))
+  .settings(credentials += Credentials("Bintray API Realm", "api.bintray.com", "lgos", ""))
   .settings(Seq(
     licenses := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-
-    sonatypeProfileName := "com.github.lgos44",
 
     publishMavenStyle := true,
 
@@ -49,7 +51,5 @@ lazy val sampleApp = project.in(file("sample-app"))
   .dependsOn(api)
 
 
-// Sonatype/maven publishing stuff
-
-useGpg := true
-
+publishTo := Some("bintray-lgos-mvn" at  "https://api.bintray.com/maven/lgos/mvn/flink-rest-scala-wrapper/;publish=1")
+credentials += Credentials("Bintray API Realm", "api.bintray.com", "lgos", "")
