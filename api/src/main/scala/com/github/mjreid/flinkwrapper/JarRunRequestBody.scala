@@ -6,6 +6,7 @@ import play.api.libs.functional.syntax._
 case class JarRunRequestBody(
                               entryClass: Option[String],
                               programArgs: Option[String],
+                              programArgsList: Option[Seq[String]],
                               parallelism: Option[Int],
                               allowNonRestoredState: Option[Boolean],
                               savepointPath: Option[String]
@@ -15,6 +16,7 @@ object JarRunRequestBody {
   implicit val reads: Reads[JarRunRequestBody] = (
     (JsPath \ "entryClass").readNullable[String] and
       (JsPath \ "programArgs").readNullable[String] and
+      (JsPath \ "programArgsList").readNullable[Seq[String]] and
       (JsPath \ "parallelism").readNullable[Int] and
       (JsPath \ "allowNonRestoredState").readNullable[Boolean] and
       (JsPath \ "savepointPath").readNullable[String]
@@ -23,6 +25,7 @@ object JarRunRequestBody {
   implicit val writes: Writes[JarRunRequestBody] = (
     (JsPath \ "entryClass").writeNullable[String] and
       (JsPath \ "programArgs").writeNullable[String] and
+      (JsPath \ "programArgsList").writeNullable[Seq[String]] and
       (JsPath \ "parallelism").writeNullable[Int] and
       (JsPath \ "allowNonRestoredState").writeNullable[Boolean] and
       (JsPath \ "savepointPath").writeNullable[String]

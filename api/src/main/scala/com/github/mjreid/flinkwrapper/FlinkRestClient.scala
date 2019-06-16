@@ -88,7 +88,7 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
     savepointPath: Option[String] = None,
     allowNonRestoredState: Option[Boolean] = None
   )(implicit ec: ExecutionContext): Future[JarRunResponseBody] = {
-    val body = JarRunRequestBody(entryClass, programArguments.map(_.mkString(" ")), parallelism, allowNonRestoredState, savepointPath)
+    val body = JarRunRequestBody(entryClass, None, programArguments, parallelism, allowNonRestoredState, savepointPath)
     wsClient.url(url + s"jars/$jarId/run")
       .post(Json.toJson(body))
       .map(responseHandler.handleResponse[JarRunResponseBody])
