@@ -109,12 +109,12 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
                   parallelism: Option[Int] = None,
                   savepointPath: Option[String] = None,
                   allowNonRestoredState: Option[Boolean] = None
-                )(implicit ec: ExecutionContext): Future[JarRunResponseBody] = {
-    val body = JarRunRequestBody(entryClass, None, programArguments, parallelism, allowNonRestoredState, savepointPath)
+                )(implicit ec: ExecutionContext): Future[JarPlanResponseBody] = {
+    val body = JarPlanRequestBody(entryClass, None, programArguments, parallelism, allowNonRestoredState, savepointPath)
     wsClient.url(url + s"jars/$jarId/plan")
       .withBody(Json.toJson(body))
       .get()
-      .map(responseHandler.handleResponse[JarRunResponseBody])
+      .map(responseHandler.handleResponse[JarPlanResponseBody])
   }
 
   /**

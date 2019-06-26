@@ -6,5 +6,5 @@ case class JarPlanResponseBody(errors: Option[Seq[String]])
 
 object JarPlanResponseBody {
   implicit val reads: Reads[JarPlanResponseBody] =
-    (JsPath \ "errors").readNullable[List[String]].map(JarPlanResponseBody.apply(_))
+    (JsPath \ "errors").formatNullable[Seq[String]].map(JarPlanResponseBody.apply)
 }
