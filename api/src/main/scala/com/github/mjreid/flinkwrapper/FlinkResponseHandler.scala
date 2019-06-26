@@ -12,14 +12,12 @@ trait FlinkResponseHandler {
 
 private[flinkwrapper] object FlinkResponseHandler extends FlinkResponseHandler {
 
-  private val maximumBodyCharacters = 4000
-
   override def handleResponse[T](
     response: StandaloneWSResponse
   )(implicit reads: Reads[T]): T = {
     response.status match {
       case i if i >= 400 =>
-        throw FlinkWrapperUnexpectedStatusCodeException(i, response.body.take(maximumBodyCharacters))
+        throw FlinkWrapperUnexpectedStatusCodeException(i, response.body)
       case _ =>
         parseOrThrow(response.body)
     }
@@ -32,7 +30,7 @@ private[flinkwrapper] object FlinkResponseHandler extends FlinkResponseHandler {
       case 404 =>
         None
       case i if i >= 400 =>
-        throw FlinkWrapperUnexpectedStatusCodeException(i, response.body.take(maximumBodyCharacters))
+        throw FlinkWrapperUnexpectedStatusCodeException(i, response.body)
       case _ =>
         Some(parseOrThrow(response.body))
     }

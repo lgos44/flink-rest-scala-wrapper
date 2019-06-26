@@ -8,6 +8,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.core.JsonParseException
 import play.api.libs.json._
+import play.api.libs.ws.StandaloneWSRequest
 import play.api.libs.ws.ahc.{StandaloneAhcWSClient, StandaloneAhcWSResponse}
 import play.shaded.ahc.org.asynchttpclient.request.body.multipart.FilePart
 import play.shaded.ahc.org.asynchttpclient.{AsyncCompletionHandler, AsyncHttpClient, Response => AHCResponse}
@@ -91,6 +92,28 @@ class FlinkRestClient(flinkRestClientConfig: FlinkRestClientConfig) extends Auto
     val body = JarRunRequestBody(entryClass, None, programArguments, parallelism, allowNonRestoredState, savepointPath)
     wsClient.url(url + s"jars/$jarId/run")
       .post(Json.toJson(body))
+      .map(responseHandler.handleResponse[JarRunResponseBody])
+  }
+
+  /**
+    * runProgram starts a job on the Flink server.
+    *
+    * IMPORTANT - The jarId is *not* the same as what appears in the Flink web UI -- there are hidden GUID values
+    * prepended to the JAR name. If you use the uploadJar method, the correct value will be
+    * returned in [[UploadJarResult.filename]].
+    */
+  def planProgram(
+                  jarId: String,
+                  programArguments: Option[Seq[String]] = None,
+                  entryClass: Option[String] = None,
+                  parallelism: Option[Int] = None,
+                  savepointPath: Option[String] = None,
+                  allowNonRestoredState: Option[Boolean] = None
+                )(implicit ec: ExecutionContext): Future[JarRunResponseBody] = {
+    val body = JarRunRequestBody(entryClass, None, programArguments, parallelism, allowNonRestoredState, savepointPath)
+    wsClient.url(url + s"jars/$jarId/plan")
+      .withBody(Json.toJson(body))
+      .get()
       .map(responseHandler.handleResponse[JarRunResponseBody])
   }
 

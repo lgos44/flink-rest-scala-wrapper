@@ -62,6 +62,18 @@ object SampleApp extends App {
     jobResult
   }
 
+  def runPlanProgram(jarName: String, mainClass: Option[String], programArguments: Option[Seq[String]] = None): JarRunResponseBody = {
+    val result = flinkClient.planProgram(
+      jarName,
+      entryClass = mainClass.orElse(Some("org.example.WordCount")),
+      programArguments = programArguments
+    )
+
+    val jobResult = Await.result(result, FiniteDuration(60, TimeUnit.SECONDS))
+    println(jobResult)
+    jobResult
+  }
+
   def runUploadJar(): String = {
     val resultF = flinkClient.uploadJar(
       new File("/a.jar")
